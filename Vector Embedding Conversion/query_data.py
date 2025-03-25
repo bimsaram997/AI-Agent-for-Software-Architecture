@@ -3,7 +3,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
 from get_embedding_function import get_embedding_function
-
+from display_image import search_images
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
@@ -43,8 +43,9 @@ def query_rag(query_text: str):
     model = Ollama(model="mistral")
     response_text = model.invoke(prompt_str)
 
+    matched_images = search_images(query_text, similarity_threshold=0.89, top_k=2)
     sources = [doc.metadata.get("id", None) if hasattr(doc, 'metadata') else "Unknown" for doc, _ in results]
-    formatted_response = f"Response: {response_text}\nSources: {sources}"
+    formatted_response = f"Response: {response_text}\nSources: {sources}\n Image Sources: {matched_images}"
     print(formatted_response)
     return response_text
 

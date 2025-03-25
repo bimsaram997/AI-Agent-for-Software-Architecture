@@ -62,7 +62,7 @@ def reset_image_embeddings_collection():
     print(f"Collection '{collection_name}' has been recreated.")
 
 # Example usage
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # Reset collection (only run when needed)
     #reset_image_embeddings_collection()
     
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     
     # Searching for relevant images
-    query = "Tell me role of micro service architecture"
-    matched_images = search_images(query, similarity_threshold=0.89, top_k=2)
+    #query = "Tell me role of Monolithic Architecture"
+    #matched_images = search_images(query, similarity_threshold=0.89, top_k=2)
     
-    print("\nMatched Images:", matched_images)
+    #print("\nMatched Images:", matched_images)
