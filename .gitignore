@@ -1,0 +1,29 @@
+# .gitignore for Chroma/vector embedding project
+
+# SQLite database file
+chroma.sqlite3
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Chroma storage directory
+chroma/
+
+# Environment variables
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Local data directories (uncomment if you want to ignore these)
+# data/
