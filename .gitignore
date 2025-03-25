@@ -1,29 +1,36 @@
-# .gitignore for Chroma/vector embedding project
+# .gitignore for Vector Embedding Conversion project
 
-# SQLite database file
-chroma.sqlite3
-
-# Python cache
+# Ignore directories
+data/
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Chroma storage directory
 chroma/
+
+# SQLite database files
+*.sqlite3
+*.db
+*.sqlite
+
+# Python cache and compiled files
+*.py[cod]
+*$py.class
 
 # Environment variables
 .env
 .env.local
 
-# IDE files
+# IDE specific files
 .vscode/
 .idea/
-*.swp
 
 # OS metadata
 .DS_Store
 Thumbs.db
 
-# Local data directories (uncomment if you want to ignore these)
-# data/
+# Byte-compiled / optimized / DLL files
+*.so
+*.pyd
+*.dll
+
+# Logs and outputs
+*.log
+*.out
