@@ -1,5 +1,6 @@
 # .gitignore for Vector Embedding Conversion project
 Vector Embedding Conversion/data_images/
+Vector Embedding Conversion/data/
 # Ignore directories
 data/
 __pycache__/
