@@ -1,5 +1,10 @@
 import streamlit as st
 import requests
+import uuid
+from fpdf import FPDF
+import html
+import re
+from io import BytesIO
 
 # FastAPI Backend URLs
 BACKEND_URL_STRUCTURED = "http://127.0.0.1:8000/structured-query"
@@ -20,11 +25,67 @@ if "chat_input" not in st.session_state:
     st.session_state.chat_input = ""
 if "clear_input" not in st.session_state:
     st.session_state.clear_input = False
+if "conversation_id" not in st.session_state:
+    st.session_state.conversation_id = None
 
 # Clear input safely before rendering input widget
 if st.session_state.clear_input:
     st.session_state.chat_input = ""
     st.session_state.clear_input = False
+
+def clean_text(text):
+    """Remove unwanted characters and format text for PDF"""
+    # Remove markdown formatting
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Remove bold
+    text = re.sub(r'_(.*?)_', r'\1', text)       # Remove italics
+    text = re.sub(r'`(.*?)`', r'\1', text)       # Remove code ticks
+    text = re.sub(r'#+\s*', '', text)            # Remove headers
+    text = re.sub(r'\[.*?\]\(.*?\)', '', text)   # Remove links
+    # Replace emojis with text descriptions
+    emoji_map = {
+        "🧠": "[AI]",
+        "🧑‍💻": "[User]",
+        "🤖": "[AI]",
+        "❌": "[Error]",
+        "⚠️": "[Warning]"
+    }
+    for emoji, replacement in emoji_map.items():
+        text = text.replace(emoji, replacement)
+    # Unescape HTML entities
+    text = html.unescape(text)
+    return text.strip()
+
+def generate_pdf(chat_history):
+    """Generate PDF from chat history"""
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    # Add title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="AI-Powered Software Architecture Assistant", ln=1, align='C')
+    pdf.ln(10)
+    pdf.set_font("Arial", size=12)
+    
+    # Add conversation ID if available
+    if st.session_state.conversation_id:
+        pdf.cell(200, 10, txt=f"Conversation ID: {st.session_state.conversation_id}", ln=1)
+        pdf.ln(5)
+    
+    # Add chat history
+    for user_msg, ai_msg in chat_history:
+        # Clean and format user message
+        user_msg_clean = clean_text(user_msg)
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, txt=user_msg_clean, ln=1)
+        
+        # Clean and format AI message
+        ai_msg_clean = clean_text(ai_msg)
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt=ai_msg_clean)
+        pdf.ln(5)
+    
+    return pdf
 
 # Step 1: Guided Questions
 if st.session_state.stage == "questions":
@@ -59,6 +120,7 @@ if st.session_state.stage == "questions":
                 if response.status_code == 200:
                     result = response.json()
                     st.session_state.recommendations = result.get("response", "No recommendation received.")
+                    st.session_state.conversation_id = result.get("conversation_id")
                     st.session_state.stage = "chat"
                     st.session_state.chat_history.append(("🧑‍💻 My system details", "🤖 " + st.session_state.recommendations))
                 else:
@@ -82,24 +144,49 @@ if st.session_state.stage == "chat":
         key="chat_input"
     )
 
-    if st.button("Ask AI") and user_query.strip():
-        with st.spinner("Thinking..."):
-            try:
-                response = requests.post(
-                    BACKEND_URL_OPEN_ENDED,
-                    json={"query": user_query}
-                )
-                if response.status_code == 200:
-                    result = response.json()
-                    ai_response = result.get("response", "No response received.")
-                    st.session_state.chat_history.append(("🧑‍💻 " + user_query, "🤖 " + ai_response))
-                    st.session_state.clear_input = True  # safely clear input next cycle
-                    st.rerun()
-                else:
-                    st.error(f"❌ Error {response.status_code}: {response.text}")
-            except requests.exceptions.RequestException as e:
-                st.error(f"⚠️ Connection error: {e}")
+    col1, col2 = st.columns([1, 6])
+    with col1:
+        if st.button("Ask AI") and user_query.strip():
+            with st.spinner("Thinking..."):
+                try:
+                    response = requests.post(
+                        BACKEND_URL_OPEN_ENDED,
+                        json={
+                            "query": user_query,
+                            "conversation_id": st.session_state.conversation_id
+                        }
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        ai_response = result.get("response", "No response received.")
+                        st.session_state.chat_history.append(("🧑‍💻 " + user_query, "🤖 " + ai_response))
+                        st.session_state.clear_input = True
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Error {response.status_code}: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"⚠️ Connection error: {e}")
+    
+    with col2:
+        if st.button("Restart Conversation"):
+            st.session_state.clear()
+            st.session_state.stage = "questions"
+            st.session_state.conversation_id = None
+            st.rerun()
 
-    if st.button("Restart"):
-        st.session_state.clear()
-        st.rerun()
+    # Single Export to PDF button that triggers immediate download
+    if st.session_state.chat_history:
+        pdf = generate_pdf(st.session_state.chat_history)
+        pdf_bytes = BytesIO()
+        pdf.output(pdf_bytes)
+        pdf_bytes.seek(0)
+        
+        st.download_button(
+            label="Export to PDF",
+            data=pdf_bytes,
+            file_name=f"architecture_chat_{st.session_state.conversation_id or 'session'}.pdf",
+            mime="application/pdf",
+            key="pdf_download"
+        )
+    else:
+        st.warning("No chat history to export")
