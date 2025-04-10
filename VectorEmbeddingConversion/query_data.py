@@ -58,10 +58,10 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     # Configure the remote Ollama instance
     model = Ollama(
         model="llama3.2:latest",
-        base_url="http://86.50.169.115:11434",  # Note: removed /api/generate from the URL
+        base_url="http://86.50.169.115:11434",  
         temperature=0.7,
         top_p=0.9,
-        timeout=60  # Increased timeout for remote connection
+        timeout=60  
     )
     
     try:
@@ -69,7 +69,7 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     except Exception as e:
         return f"Error connecting to the AI model: {str(e)}"
     
-    # Optional: Add image search
+    # Add image search
     sources = [doc.metadata.get("id", None) if hasattr(doc, 'metadata') else "Unknown" for doc, _ in results]
     formatted_sources = []
     print("Matched Sources Metadata:\n")
@@ -103,7 +103,6 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     return response_text
 
 def main():
-    # Create CLI.
     parser = argparse.ArgumentParser()
     parser.add_argument("query_text", type=str, help="The query text.")
     args = parser.parse_args()

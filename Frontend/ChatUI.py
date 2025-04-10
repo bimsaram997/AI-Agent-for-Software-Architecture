@@ -1,6 +1,5 @@
 import streamlit as st
 import requests
-import uuid
 from fpdf import FPDF
 import html
 import re
@@ -35,13 +34,13 @@ if st.session_state.clear_input:
 
 def clean_text(text):
     """Remove unwanted characters and format text for PDF"""
-    # Remove markdown formatting
-    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Remove bold
-    text = re.sub(r'_(.*?)_', r'\1', text)       # Remove italics
-    text = re.sub(r'`(.*?)`', r'\1', text)       # Remove code ticks
-    text = re.sub(r'#+\s*', '', text)            # Remove headers
-    text = re.sub(r'\[.*?\]\(.*?\)', '', text)   # Remove links
-    # Replace emojis with text descriptions
+
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  
+    text = re.sub(r'_(.*?)_', r'\1', text)       
+    text = re.sub(r'`(.*?)`', r'\1', text)       
+    text = re.sub(r'#+\s*', '', text)            
+    text = re.sub(r'\[.*?\]\(.*?\)', '', text)   
+  
     emoji_map = {
         "🧠": "[AI]",
         "🧑‍💻": "[User]",
@@ -51,7 +50,7 @@ def clean_text(text):
     }
     for emoji, replacement in emoji_map.items():
         text = text.replace(emoji, replacement)
-    # Unescape HTML entities
+ 
     text = html.unescape(text)
     return text.strip()
 
@@ -61,25 +60,20 @@ def generate_pdf(chat_history):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
     
-    # Add title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="AI-Powered Software Architecture Assistant", ln=1, align='C')
     pdf.ln(10)
     pdf.set_font("Arial", size=12)
     
-    # Add conversation ID if available
     if st.session_state.conversation_id:
         pdf.cell(200, 10, txt=f"Conversation ID: {st.session_state.conversation_id}", ln=1)
         pdf.ln(5)
     
-    # Add chat history
     for user_msg, ai_msg in chat_history:
-        # Clean and format user message
         user_msg_clean = clean_text(user_msg)
         pdf.set_font("Arial", 'B', 12)
         pdf.cell(200, 10, txt=user_msg_clean, ln=1)
         
-        # Clean and format AI message
         ai_msg_clean = clean_text(ai_msg)
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, txt=ai_msg_clean)
@@ -132,13 +126,11 @@ if st.session_state.stage == "questions":
 if st.session_state.stage == "chat":
     st.subheader("💬 Chat with the AI Architect")
 
-    # Display chat history
     for user_msg, ai_msg in st.session_state.chat_history:
         st.markdown(f"**{user_msg}**")
         st.markdown(f"{ai_msg}")
         st.markdown("---")
 
-    # Input for chat
     user_query = st.text_input(
         "Ask me anything about your architecture:",
         key="chat_input"
@@ -174,7 +166,6 @@ if st.session_state.stage == "chat":
             st.session_state.conversation_id = None
             st.rerun()
 
-    # Single Export to PDF button that triggers immediate download
     if st.session_state.chat_history:
         pdf = generate_pdf(st.session_state.chat_history)
         pdf_bytes = BytesIO()

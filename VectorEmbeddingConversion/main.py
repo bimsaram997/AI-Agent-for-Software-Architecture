@@ -7,7 +7,6 @@ import uuid
 
 app = FastAPI()
 
-# Conversation memory storage
 conversation_db: Dict[str, List[Dict]] = {}
 
 # Allow requests from Streamlit
@@ -32,7 +31,6 @@ class OpenEndedQuery(BaseModel):
 
 @app.post("/structured-query")
 def handle_structured_query(data: StructuredQuery):
-    # Create the query from structured inputs
     full_query = f"""System Type: {data.system_type}
 Key Requirements: {', '.join(data.key_requirements)}
 Preferred Architecture: {data.architecture_preference}
@@ -62,7 +60,6 @@ def handle_open_ended_query(data: OpenEndedQuery):
     # Add new user message to history
     conversation_history.append({"role": "user", "content": data.query})
     
-    # Get response with full context
     response_text = query_rag(data.query, conversation_history)
     
     # Update conversation history
