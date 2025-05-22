@@ -17,8 +17,8 @@ collection = chroma_client.get_or_create_collection(
     name="image_embeddings", metadata={"hnsw:space": "cosine"}
 )
 
-
-def search_images(query, similarity_threshold=0.75, top_k=5):
+def search_images(query, similarity_threshold=0.75, top_k=2):
+    print(query)
     """Search for images similar to the query."""
     query_embedding = get_text_embedding(query)
     
@@ -71,7 +71,7 @@ def reset_image_embeddings_collection():
 
     
     # Searching for relevant images
-    #query = "Tell me role of Monolithic Architecture"
-    #matched_images = search_images(query, similarity_threshold=0.89, top_k=2)
+    query = "Tell me role of Microservice Architecture"
+    matched_images = search_images(query, similarity_threshold=0.89, top_k=2)
     
-    #print("\nMatched Images:", matched_images)
+    print("\nMatched Images:", matched_images)

@@ -36,7 +36,7 @@ class DocumentProcessorApp:
 
         self.document_type = tk.StringVar(value="Architecture Decision Record")
         self.type_menu = tk.OptionMenu(root, self.document_type, "Architecture Decision Record", "Anti Patterns", "Benchmarking", "Best Practises",  "Case studies",  "Software Enginnering Literatures",  
-                                       "Software Architecture Patterns", "Architecture examples")
+                                       "Software Architecture Patterns", "Architecture examples best")
         self.type_menu.pack(pady=5)
 
         # Process Button

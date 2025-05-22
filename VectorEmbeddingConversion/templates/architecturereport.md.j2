@@ -1,0 +1,40 @@
+# Software Architecture Report
+
+## 1. System Overview
+**System Type**: {{ system_type }}
+**Summary**: {{ summary }}
+
+## 2. Functional Requirements
+{% for req in functional_requirements %}
+- {{ req }}
+{% endfor %}
+
+## 3. Non-Functional Requirements
+{% for req in non_functional_requirements %}
+- {{ req }}
+{% endfor %}
+
+## 4. Preferred Architecture Pattern
+- **Pattern**: {{ architecture_pattern }}
+- **Rationale**: {{ rationale }}
+
+## 5. Suggested Technologies
+{% for tech in technologies %}
+- {{ tech }}
+{% endfor %}
+
+## 6. UML Diagrams
+![Component Diagram]({{ uml_component_path }})
+![Sequence Diagram]({{ uml_sequence_path }})
+
+## 7. Source References
+{% for source in sources %}
+- {{ source }}
+{% endfor %}
+
+## 8. Chat Summary
+> {{ chat_summary }}
+
+---
+
+**Exported On**: {{ export_date }}

@@ -39,7 +39,11 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     results = db.similarity_search_with_score(query_text, k=5)
     
     if not results:
-        return "No relevant architectural documents found. Could you provide more details about your system?"
+        return {
+            "response": "No relevant architectural documents found. Could you provide more details about your system?",
+            "images": [],
+            "sources": []
+        }
     
     # Format context and history
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
@@ -67,40 +71,30 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     try:
         response_text = model.invoke(prompt_str)
     except Exception as e:
-        return f"Error connecting to the AI model: {str(e)}"
-    
-    # Add image search
-    sources = [doc.metadata.get("id", None) if hasattr(doc, 'metadata') else "Unknown" for doc, _ in results]
+        return {
+            "response": f"Error connecting to the AI model: {str(e)}",
+            "images": [],
+            "sources": []
+        }
+
+    # Process sources
     formatted_sources = []
-    print("Matched Sources Metadata:\n")
-    
     for i, (doc, score) in enumerate(results, 1):
-        metadata = doc.metadata
+        metadata = doc.metadata or {}
         author = metadata.get("author", "Unknown")
         creator = metadata.get("creator", "Unknown")
         source = metadata.get("source", metadata.get("id", "Unknown"))
+        formatted_sources.append(f"Source {i}: Author: {author}, Creator: {creator}, Source: {source}")
 
-        # For logging
-        print(f"[Source {i}]")
-        print(f"Score: {score}")
-        print(f"Author: {author}")
-        print(f"Creator: {creator}")
-        print(f"Source: {source}")
-        print(f"Content Preview: {doc.page_content[:200]}")
-        print("-" * 50)
-        
-        formatted_sources.append(f"- Source {i}: Author: {author}, Creator: {creator}, Source: {source}")
-
-    
+    # Search for images
     matched_images = search_images(query_text, similarity_threshold=0.89, top_k=2)
-    if matched_images:
-        response_text += f"\n\nRelated architecture diagrams: {matched_images}"
     
-    if formatted_sources:
-        sources_section = "\n\n**Sources:**\n" + "\n".join(formatted_sources)
-        response_text += sources_section
-    
-    return response_text
+    return {
+        "response": response_text,
+        "images": matched_images,
+        "sources": formatted_sources
+    }
+
 
 def main():
     parser = argparse.ArgumentParser()

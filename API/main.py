@@ -17,7 +17,8 @@ app.add_middleware(
 # Input schema for structured query
 class StructuredQuery(BaseModel):
     system_type: str
-    key_requirements: list
+    functional_requirements: list
+    non_functional_requirements:list
     architecture_preference: str
 
 # Input schema for open-ended query
@@ -28,7 +29,7 @@ class OpenEndedQuery(BaseModel):
 @app.post("/structured-query")
 def handle_structured_query(data: StructuredQuery):
     # Create the query from structured inputs
-    full_query = f"System Type: {data.system_type}\nKey Requirements: {', '.join(data.key_requirements)}\nPreferred Architecture: {data.architecture_preference}\n\nWhat is the best approach?"
+    full_query = f"System Type: {data.system_type}\nFunctional Requirements: {', '.join(data.functional_requirements)}\nNon-Functional Requirements: {', '.join(data.non_functional_requirements)}\nPreferred Architecture: {data.architecture_preference}\n\nWhat is the best approach?"
     response_text = query_rag(full_query)
     return {"response": response_text}
 
