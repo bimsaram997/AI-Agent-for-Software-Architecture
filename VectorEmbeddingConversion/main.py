@@ -9,6 +9,8 @@ app = FastAPI()
 
 conversation_db: Dict[str, List[Dict]] = {}
 
+
+
 # Allow Streamlit access
 app.add_middleware(
     CORSMiddleware,
@@ -77,29 +79,43 @@ def handle_open_ended_query(data: OpenEndedQuery):
     if data.conversation_id and data.conversation_id in conversation_db:
         conversation_history = conversation_db[data.conversation_id]
 
+    # Append user query tentatively
     conversation_history.append({"role": "user", "content": data.query})
 
+    # Run your RAG + query classifier here
     result = query_rag(data.query, conversation_history=conversation_history)
 
+    # If result is just string, make consistent dict
     if isinstance(result, str):
         response_text = result
         images = []
         sources = []
+        filtered = False
     else:
         response_text = result.get("response", "")
         images = result.get("images", [])
         sources = result.get("sources", [])
+        filtered = result.get("filtered", False)  # <-- expect this from query_rag
 
-    conversation_history.append({"role": "assistant", "content": response_text})
+    # Append assistant response only if not filtered
+    if not filtered:
+        conversation_history.append({"role": "assistant", "content": response_text})
+    else:
+        # If filtered, remove the user query appended above to keep history clean
+        conversation_history.pop()
 
-    if data.conversation_id:
+    # Update conversation db only if not filtered
+    if data.conversation_id and not filtered:
         conversation_db[data.conversation_id] = conversation_history
 
+    # Return filtered flag for front-end use
     return {
         "response": response_text,
         "images": images,
-        "sources": sources
+        "sources": sources,
+        "filtered": filtered
     }
+
 
 # Route: ADR query
 @app.post("/generate-adr")

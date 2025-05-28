@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from query_data import query_rag  # Your RAG logic
-
+from fastapi.staticfiles import StaticFiles
+import os
 app = FastAPI()
 
 # Allow requests from Streamlit
@@ -14,6 +15,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+pdf_dir = os.path.abspath("chroma/VectorEmbeddingConversion/data")
+print("✅ Serving PDF directory from:", pdf_dir)
+
+if not os.path.exists(pdf_dir):
+    raise RuntimeError(f"Directory not found: {pdf_dir}")
+
+print("📄 Available files:")
+for f in os.listdir(pdf_dir):
+    print("  -", f)
+
+app.mount("/files", StaticFiles(directory=pdf_dir), name="files")
+
+
+# Optional: quick test
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
 # Input schema for structured query
 class StructuredQuery(BaseModel):
     system_type: str

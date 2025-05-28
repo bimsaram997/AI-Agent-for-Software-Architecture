@@ -1,12 +1,12 @@
 import streamlit as st
 import requests
 from fpdf import FPDF
-import re
 from io import BytesIO
 from PIL import Image
+from config import FUNCTIONAL_REQUIREMENTS, NON_FUNCTIONAL_REQUIREMENTS
 from utils import generate_adr_pdf
 from streamlit_custom_notification_box import custom_notification_box
-from config import FUNCTIONAL_REQUIREMENTS, NON_FUNCTIONAL_REQUIREMENTS
+
 # Backend endpoints
 BACKEND_URL_STRUCTURED = "http://127.0.0.1:8000/structured-query"
 BACKEND_URL_OPEN_ENDED = "http://127.0.0.1:8000/query"
@@ -49,8 +49,6 @@ if st.session_state.clear_input:
     st.session_state.chat_input = ""
     st.session_state.clear_input = False
 
-
-# Step 1: Questions
 # Step 1: Questions
 if st.session_state.stage == "questions":
     st.subheader("Step 1: Tell me about your project")
@@ -89,8 +87,7 @@ if st.session_state.stage == "questions":
         "Do you prefer a specific architecture pattern?",
         ["Microservices", "Monolithic", "Event-Driven", "Not sure"]
     )
-    
-    
+
     if st.button("Get Recommendations"):
         with st.spinner("Generating recommendation..."):
             try:
@@ -112,7 +109,7 @@ if st.session_state.stage == "questions":
                     st.session_state.recommendations = result.get("response", "No recommendation received.")
                     st.session_state.conversation_id = result.get("conversation_id")
                     ai_response = {
-                        "text": "🤖 " + st.session_state.recommendations,
+                        "text": "🤖 " + str(st.session_state.recommendations),
                         "images": result.get("images", []),
                         "sources": result.get("sources", [])
                     }
@@ -127,6 +124,7 @@ if st.session_state.stage == "questions":
 if st.session_state.stage == "chat":
     st.subheader("💬 Chat with the AI Architect")
 
+    # Display chat history
     for user_msg, ai_msg in st.session_state.chat_history:
         st.markdown(f"**{user_msg}**")
         st.markdown(ai_msg.get("text", ""))
@@ -141,6 +139,24 @@ if st.session_state.stage == "chat":
         if ai_msg.get("sources"):
             st.markdown("**Sources:**")
             for source in ai_msg["sources"]:
+                st.markdown(f"- {source}")
+        st.markdown("---")
+
+    # If there's a filtered query response, display it at the end (but don't append to history)
+    if "temp_query" in st.session_state and "temp_response" in st.session_state:
+        st.markdown(f"**🧑‍💻 {st.session_state.temp_query}**")
+        st.markdown(st.session_state.temp_response.get("text", ""))
+        if st.session_state.temp_response.get("images"):
+            for img_path in st.session_state.temp_response["images"]:
+                try:
+                    img = Image.open(img_path)
+                    img = img.resize((500, 400))
+                    st.image(img)
+                except Exception as e:
+                    st.warning(f"Failed to load image: {img_path}\nError: {e}")
+        if st.session_state.temp_response.get("sources"):
+            st.markdown("**Sources:**")
+            for source in st.session_state.temp_response["sources"]:
                 st.markdown(f"- {source}")
         st.markdown("---")
 
@@ -162,19 +178,33 @@ if st.session_state.stage == "chat":
                     if response.status_code == 200:
                         result = response.json()
                         images = result.get("images", [])
+                        response_text = result.get("response", "No response received.")
+
                         ai_response = {
-                            "text": "🤖 " + result.get("response", "No response received."),
+                            "text": "🤖 " + response_text,
                             "images": images,
                             "sources": result.get("sources", [])
                         }
-                        st.session_state.chat_history.append(("🧑‍💻 " + user_query, ai_response))
+
                         st.session_state.generated_images = images
                         st.session_state.clear_input = True
+
+                        if not result.get("filtered", False):
+                            st.session_state.chat_history.append(("🧑‍💻 " + user_query, ai_response))
+                            if "temp_query" in st.session_state:
+                                del st.session_state.temp_query
+                            if "temp_response" in st.session_state:
+                                del st.session_state.temp_response
+                        else:
+                            st.session_state.temp_query = user_query
+                            st.session_state.temp_response = ai_response
+
                         st.rerun()
                     else:
                         st.error(f"❌ Error {response.status_code}: {response.text}")
                 except requests.exceptions.RequestException as e:
                     st.error(f"⚠️ Connection error: {e}")
+
 
     with col2:
         if st.button("Restart Conversation"):
@@ -206,18 +236,16 @@ if st.session_state.stage == "chat":
 
                         adr_pdf = generate_adr_pdf(adr_text=adr_text, images=images)
                         adr_bytes = BytesIO()
-                        adr_pdf.output(adr_bytes)
+                        adr_pdf.output(adr_bytes, 'F')
                         adr_bytes.seek(0)
                         st.session_state.adr_pdf_bytes = adr_bytes
                         st.success("✅ ADR ready to download below!")
-
                         st.rerun()
                     else:
                         st.error(f"❌ Error {response.status_code}: {response.text}")
                 except requests.exceptions.RequestException as e:
                     st.error(f"⚠️ Connection error: {e}")
 
-    # ADR download button appears automatically after generation
     if st.session_state.get("adr_pdf_bytes"):
         st.download_button(
             label="📄 Click to download your ADR",
@@ -225,3 +253,230 @@ if st.session_state.stage == "chat":
             file_name=f"ADR_{st.session_state.conversation_id or 'session'}.pdf",
             mime="application/pdf"
         )
+
+
+
+
+
+import argparse
+from langchain_community.vectorstores import Chroma
+from langchain.prompts import ChatPromptTemplate
+from langchain_community.llms.ollama import Ollama
+from get_embedding_function import get_embedding_function
+from display_image import search_images
+from typing import List, Dict, Optional, Tuple
+
+BASE_PDF_URL = "http://localhost:8000/files/"
+
+CHROMA_PATH = "chroma"
+
+PROMPT_TEMPLATE = """
+You are an AI Software Architecture Assistant. Use the following context and conversation history to answer the question.
+
+Context:
+{context}
+
+---
+
+Conversation History:
+{history}
+
+---
+
+Current Question: {question}
+
+Provide a detailed, professional response focusing on software architecture best practices.
+Include relevant examples when appropriate.
+"""
+
+def is_architecture_related(query: str) -> bool:
+    architecture_keywords = [
+        "architecture", "design pattern", "microservices", "monolith", "event-driven",
+        "scalability", "availability", "fault tolerance", "deployment", "API gateway",
+        "container", "CI/CD", "load balancing", "domain-driven design", "soa",
+        "component", "distributed", "infrastructure", "cloud-native", "system design"
+    ]
+    query_lower = query.lower()
+    return any(keyword in query_lower for keyword in architecture_keywords)
+
+def filter_duplicate_sources(
+    results: List[Tuple[object, float]]
+) -> Tuple[List[Tuple[object, float]], List[Tuple[object, float]]]:
+    """
+    Filters out duplicate documents based on the 'source' metadata field.
+
+    Returns a tuple of (unique_results, duplicates)
+    """
+    seen_sources = set()
+    unique_results = []
+    duplicates = []
+
+    for doc, score in results:
+        source = doc.metadata.get("source")
+        if source is None:
+            # No source metadata, treat as unique
+            unique_results.append((doc, score))
+        elif source not in seen_sources:
+            seen_sources.add(source)
+            unique_results.append((doc, score))
+        else:
+            duplicates.append((doc, score))
+
+    return unique_results, duplicates
+
+def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None):
+    if conversation_history is None:
+        conversation_history = []
+    # Filter unrelated queries
+    if not is_architecture_related(query_text):
+        return {
+            "response": (
+                "❌ This assistant is focused on **Software Architecture Design**. "
+                "Please ask questions related to system architecture, design patterns, or related decisions."
+            ),
+            "images": [],
+            "sources": [],
+            "filtered": True
+        }
+    # Prepare the DB
+    embedding_function = get_embedding_function()
+    db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
+    
+    # Search the DB
+    results = db.similarity_search_with_score(query_text, k=5)
+
+    # Filter duplicates by source
+    results, duplicates = filter_duplicate_sources(results)
+
+    if not results:
+        return {
+            "response": "No relevant architectural documents found. Could you provide more details about your system?",
+            "images": [],
+            "sources": []
+        }
+    
+    # Format context and history
+    context_text = "\n\n---\n\n".join([doc.page_content for doc, _ in results])
+    history_text = "\n".join(
+        f"{msg['role'].capitalize()}: {msg['content']}" 
+        for msg in conversation_history[-6:]  # Keep last 6 messages
+    ) if conversation_history else "No previous conversation"
+    
+    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+    prompt_str = str(prompt_template.format(
+        context=context_text,
+        history=history_text,
+        question=query_text
+    ))
+    
+    # Configure the remote Ollama instance
+    model = Ollama(
+        model="llama3.2:latest",
+        base_url="http://86.50.169.115:11434",  
+        temperature=0.7,
+        top_p=0.9,
+        timeout=60  
+    )
+    
+    try:
+        response_text = model.invoke(prompt_str)
+    except Exception as e:
+        return {
+            "response": f"Error connecting to the AI model: {str(e)}",
+            "images": [],
+            "sources": []
+        }
+
+    # Process sources from unique results
+    formatted_sources = []
+    for i, (doc, score) in enumerate(results, 1):
+        metadata = doc.metadata or {}
+        source = metadata.get("source", metadata.get("id", "Unknown"))
+        formatted_sources.append(f"Source {i}: Source: {source}")
+
+
+    # Search for images
+    matched_images = search_images(query_text, similarity_threshold=0.89, top_k=2)
+    
+    return {
+        "response": response_text,
+        "images": matched_images,
+        "sources": formatted_sources
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("query_text", type=str, help="The query text.")
+    args = parser.parse_args()
+    query_text = args.query_text
+    result = query_rag(query_text)
+    print(result)  # or handle the result as needed
+
+if __name__ == "__main__":
+    main()
+
+
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from query_data import query_rag
+import os
+
+app = FastAPI()
+
+# Allow all CORS for development (you can restrict this later)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ✅ Use the correct relative path to serve PDFs
+pdf_dir = os.path.abspath("data")
+print("✅ Serving PDF directory from:", pdf_dir)
+
+# Ensure the folder exists
+if not os.path.exists(pdf_dir):
+    raise RuntimeError(f"❌ Directory not found: {pdf_dir}")
+
+# Serve static PDF files at /files/*
+app.mount("/files", StaticFiles(directory=pdf_dir), name="files")
+
+# Test endpoint
+@app.get("/ping")
+def ping():
+    return {"message": "pong"}
+
+# Request models
+class StructuredQuery(BaseModel):
+    system_type: str
+    functional_requirements: list
+    non_functional_requirements: list
+    architecture_preference: str
+
+class OpenEndedQuery(BaseModel):
+    query: str
+
+# Endpoint for structured input
+@app.post("/structured-query")
+def handle_structured_query(data: StructuredQuery):
+    full_query = (
+        f"System Type: {data.system_type}\n"
+        f"Functional Requirements: {', '.join(data.functional_requirements)}\n"
+        f"Non-Functional Requirements: {', '.join(data.non_functional_requirements)}\n"
+        f"Preferred Architecture: {data.architecture_preference}\n\n"
+        f"What is the best approach?"
+    )
+    response_text = query_rag(full_query)
+    return {"response": response_text}
+
+# Endpoint for open-ended query
+@app.post("/query")
+def handle_open_ended_query(data: OpenEndedQuery):
+    response_text = query_rag(data.query)
+    return {"response": response_text}
