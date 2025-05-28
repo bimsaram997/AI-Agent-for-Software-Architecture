@@ -5,7 +5,9 @@ from langchain_community.llms.ollama import Ollama
 from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import List, Dict, Optional, Tuple
+import os
 
+PDF_BASE_URL = "http://127.0.0.1:8000/files/"
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
@@ -129,9 +131,10 @@ def query_rag(query_text: str, conversation_history: Optional[List[Dict]] = None
     formatted_sources = []
     for i, (doc, score) in enumerate(results, 1):
         metadata = doc.metadata or {}
-        source = metadata.get("source", metadata.get("id", "Unknown"))
-        formatted_sources.append(f"Source {i}:  Source: {source}")
-
+        source_path = metadata.get("source", metadata.get("id", "Unknown"))
+        filename = os.path.basename(source_path)
+        pdf_url = f"{PDF_BASE_URL}{filename}"
+        formatted_sources.append(f'Source {i}: <a href="{pdf_url}" target="_blank">{filename}</a>')
 
     # Search for images
     matched_images = search_images(query_text, similarity_threshold=0.89, top_k=2)

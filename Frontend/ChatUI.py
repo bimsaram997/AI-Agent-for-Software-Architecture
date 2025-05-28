@@ -141,7 +141,8 @@ if st.session_state.stage == "chat":
         if ai_msg.get("sources"):
             st.markdown("**Sources:**")
             for source in ai_msg["sources"]:
-                st.markdown(f"- {source}")
+                st.markdown(source, unsafe_allow_html=True)
+
         st.markdown("---")
 
     user_query = st.text_input("Ask me anything about your architecture:", key="chat_input")

@@ -5,8 +5,18 @@ from query_data import query_rag
 from typing import Dict, List
 import uuid
 from ADR_query_rag import generate_architecture_report
+import os
+from fastapi.staticfiles import StaticFiles
 app = FastAPI()
+pdf_dir = os.path.abspath("data")
+print("✅ Serving PDF directory from:", pdf_dir)
 
+# Ensure the folder exists
+if not os.path.exists(pdf_dir):
+    raise RuntimeError(f"❌ Directory not found: {pdf_dir}")
+
+# Serve static PDF files at /files/*
+app.mount("/files", StaticFiles(directory=pdf_dir), name="files")
 conversation_db: Dict[str, List[Dict]] = {}
 
 
