@@ -48,7 +48,9 @@ if "func_reqs" not in st.session_state:
     st.session_state.func_reqs = []
 if "non_func_reqs" not in st.session_state:
     st.session_state.non_func_reqs = []
-    
+if "project_description" not in st.session_state:
+    st.session_state.project_description = None
+        
     
 # Clear input if flag set
 if st.session_state.clear_input:
@@ -61,39 +63,57 @@ if st.session_state.clear_input:
 if st.session_state.stage == "questions":
     st.subheader("Step 1: Tell me about your project")
 
-    system_type = st.selectbox(
-        "What type of system are you designing?",
-        ["Real-time analytics", "E-commerce platform", "IoT system", "Other"]
-    )
+    col1, col2 = st.columns(2)
 
-    func_reqs = st.multiselect("Select your functional requirements", FUNCTIONAL_REQUIREMENTS, key="func_reqs")
+    # Row 1
+    with col1:
+        system_type = st.selectbox(
+            "What type of system are you designing?",
+            ["Real-time analytics", "E-commerce platform", "IoT system", "Other"]
+        )
+    with col2:
+        architecture_preference = st.radio(
+            "Do you prefer a specific architecture pattern?",
+            ["Microservices", "Monolithic", "Event-Driven", "Not sure"], horizontal=True
+        )
 
-    custom_func_reqs = st_tags.st_tags(
-        label="Add custom functional requirements (tags):",
-        text="Press enter to add",
-        value=st.session_state.get("custom_func_reqs", []),
-        key="custom_func_tags"
-    )
-    st.session_state.custom_func_reqs = custom_func_reqs
+    # Row 2
+    with col1:
+        func_reqs = st.multiselect("Select your functional requirements", FUNCTIONAL_REQUIREMENTS, key="func_reqs")
+    with col2:
+        non_func_reqs = st.multiselect("Select your non functional requirements", NON_FUNCTIONAL_REQUIREMENTS, key="non_func_reqs")
 
-    non_func_reqs = st.multiselect("Select your non functional requirements", NON_FUNCTIONAL_REQUIREMENTS, key="non_func_reqs")
+    # Row 3
+    with col1:
+        custom_func_reqs = st_tags.st_tags(
+            label="Add custom functional requirements (tags):",
+            text="Press enter to add",
+            value=st.session_state.get("custom_func_reqs", []),
+            key="custom_func_tags"
+        )
+        st.session_state.custom_func_reqs = custom_func_reqs
 
-    custom_non_func_reqs = st_tags.st_tags(
-        label="Add custom non-functional requirements (tags):",
-        text="Press enter to add",
-        value=st.session_state.get("custom_non_func_reqs", []),
-        key="custom_non_func_tags"
-    )
-    st.session_state.custom_non_func_reqs = custom_non_func_reqs
+    with col2:
+        custom_non_func_reqs = st_tags.st_tags(
+            label="Add custom non-functional requirements (tags):",
+            text="Press enter to add",
+            value=st.session_state.get("custom_non_func_reqs", []),
+            key="custom_non_func_tags"
+        )
+        st.session_state.custom_non_func_reqs = custom_non_func_reqs
+
+    # Combine selected + custom requirements
     all_functional_requirements = list(dict.fromkeys(func_reqs + st.session_state.custom_func_reqs))
     all_non_functional_requirements = list(dict.fromkeys(non_func_reqs + st.session_state.custom_non_func_reqs))
-
-    architecture_preference = st.radio(
-        "Do you prefer a specific architecture pattern?",
-        ["Microservices", "Monolithic", "Event-Driven", "Not sure"]
+    
+      # Project description - full width
+    project_description = st.text_area(
+        "Describe your project in a few sentences:",
+        value=st.session_state.get("project_description", ""),
+        height=100
     )
-    
-    
+    st.session_state.project_description = project_description
+
     if st.button("Get Recommendations"):
         if not all_functional_requirements:
             st.warning("Please select at least one functional requirement or add a custom one.")
@@ -105,14 +125,16 @@ if st.session_state.stage == "questions":
                     st.session_state.system_type = system_type
                     st.session_state.functional_requirements = all_functional_requirements
                     st.session_state.non_functional_requirements = all_non_functional_requirements
-                    st.session_state.architecture_preference = architecture_preference
+                    st.session_state.architecture_preference = architecture_preference,
+                    
                     response = requests.post(
                         BACKEND_URL_STRUCTURED,
                         json={
                             "system_type": system_type,
                             "functional_requirements": all_functional_requirements,
                             "non_functional_requirements": all_non_functional_requirements,
-                            "architecture_preference": architecture_preference
+                            "architecture_preference": architecture_preference,
+                            "project_description": project_description
                         }
                     )
                     if response.status_code == 200:
@@ -126,6 +148,7 @@ if st.session_state.stage == "questions":
                         }
                         st.session_state.chat_history.append(("🧑‍💻 My system details", ai_response))
                         st.session_state.stage = "chat"
+                        st.rerun()
                     else:
                         st.error(f"❌ Error {response.status_code}: {response.text}")
                 except requests.exceptions.RequestException as e:
@@ -155,7 +178,7 @@ if st.session_state.stage == "chat":
 
     user_query = st.text_input("Ask me anything about your architecture:", key="chat_input")
 
-    col1, col2, col3 = st.columns([1, 2, 2])
+    col1, col2, col3 = st.columns([1, 1, 1])
 
     with col1:
         if st.button("Ask AI") and user_query.strip():
@@ -206,6 +229,7 @@ if st.session_state.stage == "chat":
                             "non_functional_requirements": st.session_state.get("non_functional_requirements", ""),
                             "architecture_preference": st.session_state.get("architecture_preference", ""),
                             "conversation_id": st.session_state.get("conversation_id", ""),
+                            "project_description": st.session_state.get("project_description", ""),
                         }
                     )
                     if response.status_code == 200:
@@ -221,7 +245,6 @@ if st.session_state.stage == "chat":
                         adr_bytes.seek(0)
                         st.session_state.adr_pdf_bytes = adr_bytes
                         st.success("✅ ADR ready to download below!")
-
                         st.rerun()
                     else:
                         st.error(f"❌ Error {response.status_code}: {response.text}")

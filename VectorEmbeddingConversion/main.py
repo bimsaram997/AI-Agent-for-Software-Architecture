@@ -7,6 +7,7 @@ import uuid
 from ADR_query_rag import generate_architecture_report
 import os
 from fastapi.staticfiles import StaticFiles
+from typing import Optional
 app = FastAPI()
 pdf_dir = os.path.abspath("data")
 print("✅ Serving PDF directory from:", pdf_dir)
@@ -36,6 +37,7 @@ class StructuredQuery(BaseModel):
     functional_requirements: list
     non_functional_requirements:list
     architecture_preference: str
+    project_description:Optional[str] = None
 
 class OpenEndedQuery(BaseModel):
     query: str
@@ -47,6 +49,7 @@ class ADRQuery(BaseModel):
     non_functional_requirements:list
     architecture_preference: str
     conversation_id: str = None
+    project_description: Optional[str] = None
 
 # Route: structured initial query
 @app.post("/structured-query")
@@ -54,7 +57,8 @@ def handle_structured_query(data: StructuredQuery):
     full_query = f"""System Type: {data.system_type}
 Functional Requirements: {', '.join(data.functional_requirements)}
 Non-Functional Requirements: {', '.join(data.non_functional_requirements)}
-Preferred Architecture: {data.architecture_preference}
+Preferred Architecture: {data.architecture_preference},
+Project Description: {data.project_description}
 
 What is the best approach?"""
 
@@ -138,7 +142,8 @@ def generate_adr(data: ADRQuery):
         f"System Type: {data.system_type}\n"
         f"Functional Requirements: {', '.join(data.functional_requirements)}\n"
         f"Non-Functional Requirements: {', '.join(data.non_functional_requirements)}\n"
-        f"Architecture Preference: {data.architecture_preference}"
+        f"Architecture Preference: {data.architecture_preference}\n"
+        f"Project Descripttion: {data.project_description}\n"
     )
     conversation_history.append({"role": "user", "content": user_input_summary})
 
