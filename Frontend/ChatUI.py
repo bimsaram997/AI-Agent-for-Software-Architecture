@@ -7,6 +7,7 @@ from PIL import Image
 from utils import generate_adr_pdf
 from streamlit_custom_notification_box import custom_notification_box
 from config import FUNCTIONAL_REQUIREMENTS, NON_FUNCTIONAL_REQUIREMENTS
+import streamlit_tags as st_tags
 # Backend endpoints
 BACKEND_URL_STRUCTURED = "http://127.0.0.1:8000/structured-query"
 BACKEND_URL_OPEN_ENDED = "http://127.0.0.1:8000/query"
@@ -43,7 +44,12 @@ if "custom_func_reqs" not in st.session_state:
     st.session_state.custom_func_reqs = []
 if "custom_non_func_reqs" not in st.session_state:
     st.session_state.custom_non_func_reqs = []
-
+if "func_reqs" not in st.session_state:
+    st.session_state.func_reqs = []
+if "non_func_reqs" not in st.session_state:
+    st.session_state.non_func_reqs = []
+    
+    
 # Clear input if flag set
 if st.session_state.clear_input:
     st.session_state.chat_input = ""
@@ -60,30 +66,27 @@ if st.session_state.stage == "questions":
         ["Real-time analytics", "E-commerce platform", "IoT system", "Other"]
     )
 
-    functional_requirements = st.multiselect("Select your functional requirements", FUNCTIONAL_REQUIREMENTS)
+    func_reqs = st.multiselect("Select your functional requirements", FUNCTIONAL_REQUIREMENTS, key="func_reqs")
 
-    custom_func_input = st.text_input(
-        "Add custom functional requirements (comma separated), leave empty if none:",
-        key="custom_func_input"
+    custom_func_reqs = st_tags.st_tags(
+        label="Add custom functional requirements (tags):",
+        text="Press enter to add",
+        value=st.session_state.get("custom_func_reqs", []),
+        key="custom_func_tags"
     )
+    st.session_state.custom_func_reqs = custom_func_reqs
 
-    if custom_func_input:
-        new_reqs = [req.strip() for req in custom_func_input.split(",") if req.strip()]
-        st.session_state.custom_func_reqs = list(dict.fromkeys(st.session_state.custom_func_reqs + new_reqs))
+    non_func_reqs = st.multiselect("Select your non functional requirements", NON_FUNCTIONAL_REQUIREMENTS, key="non_func_reqs")
 
-    non_functional_requirements = st.multiselect("Select your non functional requirements", NON_FUNCTIONAL_REQUIREMENTS)
-
-    custom_non_func_input = st.text_input(
-        "Add custom non-functional requirements (comma separated), leave empty if none:",
-        key="custom_non_func_input"
+    custom_non_func_reqs = st_tags.st_tags(
+        label="Add custom non-functional requirements (tags):",
+        text="Press enter to add",
+        value=st.session_state.get("custom_non_func_reqs", []),
+        key="custom_non_func_tags"
     )
-
-    if custom_non_func_input:
-        new_non_reqs = [req.strip() for req in custom_non_func_input.split(",") if req.strip()]
-        st.session_state.custom_non_func_reqs = list(dict.fromkeys(st.session_state.custom_non_func_reqs + new_non_reqs))
-
-    all_functional_requirements = list(dict.fromkeys(functional_requirements + st.session_state.custom_func_reqs))
-    all_non_functional_requirements = list(dict.fromkeys(non_functional_requirements + st.session_state.custom_non_func_reqs))
+    st.session_state.custom_non_func_reqs = custom_non_func_reqs
+    all_functional_requirements = list(dict.fromkeys(func_reqs + st.session_state.custom_func_reqs))
+    all_non_functional_requirements = list(dict.fromkeys(non_func_reqs + st.session_state.custom_non_func_reqs))
 
     architecture_preference = st.radio(
         "Do you prefer a specific architecture pattern?",
@@ -92,36 +95,41 @@ if st.session_state.stage == "questions":
     
     
     if st.button("Get Recommendations"):
-        with st.spinner("Generating recommendation..."):
-            try:
-                st.session_state.system_type = system_type
-                st.session_state.functional_requirements = all_functional_requirements
-                st.session_state.non_functional_requirements = all_non_functional_requirements
-                st.session_state.architecture_preference = architecture_preference
-                response = requests.post(
-                    BACKEND_URL_STRUCTURED,
-                    json={
-                        "system_type": system_type,
-                        "functional_requirements": functional_requirements,
-                        "non_functional_requirements": non_functional_requirements,
-                        "architecture_preference": architecture_preference
-                    }
-                )
-                if response.status_code == 200:
-                    result = response.json()
-                    st.session_state.recommendations = result.get("response", "No recommendation received.")
-                    st.session_state.conversation_id = result.get("conversation_id")
-                    ai_response = {
-                        "text": "🤖 " + st.session_state.recommendations,
-                        "images": result.get("images", []),
-                        "sources": result.get("sources", [])
-                    }
-                    st.session_state.chat_history.append(("🧑‍💻 My system details", ai_response))
-                    st.session_state.stage = "chat"
-                else:
-                    st.error(f"❌ Error {response.status_code}: {response.text}")
-            except requests.exceptions.RequestException as e:
-                st.error(f"⚠️ Connection error: {e}")
+        if not all_functional_requirements:
+            st.warning("Please select at least one functional requirement or add a custom one.")
+        elif not all_non_functional_requirements:
+            st.warning("Please select at least one non-functional requirement or add a custom one.")
+        else:
+            with st.spinner("Generating recommendation..."):
+                try:
+                    st.session_state.system_type = system_type
+                    st.session_state.functional_requirements = all_functional_requirements
+                    st.session_state.non_functional_requirements = all_non_functional_requirements
+                    st.session_state.architecture_preference = architecture_preference
+                    response = requests.post(
+                        BACKEND_URL_STRUCTURED,
+                        json={
+                            "system_type": system_type,
+                            "functional_requirements": all_functional_requirements,
+                            "non_functional_requirements": all_non_functional_requirements,
+                            "architecture_preference": architecture_preference
+                        }
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        st.session_state.recommendations = result.get("response", "No recommendation received.")
+                        st.session_state.conversation_id = result.get("conversation_id")
+                        ai_response = {
+                            "text": "🤖 " + st.session_state.recommendations,
+                            "images": result.get("images", []),
+                            "sources": result.get("sources", [])
+                        }
+                        st.session_state.chat_history.append(("🧑‍💻 My system details", ai_response))
+                        st.session_state.stage = "chat"
+                    else:
+                        st.error(f"❌ Error {response.status_code}: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    st.error(f"⚠️ Connection error: {e}")
 
 # Step 2: Chat + ADR
 if st.session_state.stage == "chat":
@@ -179,9 +187,11 @@ if st.session_state.stage == "chat":
 
     with col2:
         if st.button("Restart Conversation"):
-            st.session_state.clear()
+            keys_to_reset = list(st.session_state.keys())
+            for key in keys_to_reset:
+                del st.session_state[key]
+            st.session_state.setdefault("func_reqs", [])
             st.session_state.stage = "questions"
-            st.session_state.conversation_id = None
             st.rerun()
 
     with col3:
