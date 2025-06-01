@@ -1,5 +1,4 @@
 import argparse
-import re
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
@@ -10,35 +9,20 @@ import os
 
 PDF_BASE_URL = "http://127.0.0.1:8000/files/"
 CHROMA_PATH = "chroma"
-
 PROMPT_TEMPLATE = """
-You are an AI Software Architecture Assistant. Based on the provided system information, your goal is to recommend the most suitable software architecture for the project.
+You are an AI Software Architecture Assistant helping with application design, architecture, and related best practices.
 
-User Architecture Preference: {architecture_preference}
-
-Instructions:
-- If the user has given a specific architecture preference other than "No preference",
-  you must recommend that architecture style.
-- Do not recommend any other architecture unless the user preference is "No preference".
-- If the preference is "No preference", recommend the best architecture based on the requirements.
-- Always explain why the chosen architecture fits best.
+Use the following comprehensive context and conversation history to answer the user's current question professionally and accurately.
 
 ---
 
-System Type:
-{system_type}
+Full Query (system description, requirements, or previously recommended architecture):
+{fullquery}
 
-Functional Requirements:
-{functional_requirements}
+---
 
-Non-Functional Requirements:
-{non_functional_requirements}
-
-Architecture Preferences (if any):
-{architecture_preference}
-
-Project Description:
-{project_description}
+Supporting Context (retrieved content from related documents or architecture references):
+{context}
 
 ---
 
@@ -47,14 +31,18 @@ Conversation History:
 
 ---
 
-Your Response:
-- Recommend the most appropriate architecture style (e.g., microservices, layered, event-driven, hexagonal, monolithic, etc.).
-- Justify your recommendation based on system goals and trade-offs.
-- Mention alternative architectures and why they are less suitable, if relevant.
-- Include real-world examples or known use cases if possible.
-- Include step by step process to build the system.
-- Suggest suitable technologies(e.g., React, Docker, .Net Core)
-- Be clear, structured, and professional.
+Current Question:
+{question}
+
+---
+
+Guidelines for Response:
+- Provide a clear, structured, and professional answer.
+- Focus on **software architecture, design decisions, trade-offs, scalability, deployment, technology choices, and best practices**.
+- Reference the full query or previous recommendations where relevant.
+- Include real-world examples, comparisons, or analogies where helpful.
+- Suggest technologies, tools, or patterns for implementation if appropriate.
+- Avoid repeating earlier recommendations unless they are directly relevant.
 """
 
 
@@ -93,26 +81,20 @@ def filter_duplicate_sources(
 
     return unique_results, duplicates
 
-def query_structured(
-    query_text: str,
-    system_type: str,
-    functional_requirements: str,
-    non_functional_requirements: str,
-    architecture_preference: str,
-    project_description:Optional[str] = None,
-    conversation_history: Optional[List[Dict[str, str]]] = None
-                    )-> Dict[str, str]:
+def query_rag(fullquery: str, query_text: str, conversation_history: Optional[List[Dict]] = None):
     if conversation_history is None:
         conversation_history = []
-    
-     # Normalize preference input
-    original_preference_unspecified = False 
-    if architecture_preference is None or architecture_preference.strip().lower() in ["", "not sure", "no preference", "none"]:
-        architecture_preference = "No preference"
-        original_preference_unspecified = True
-    else:
-    # Use exactly what user provided, e.g., "microservices", "layered"
-        architecture_preference = architecture_preference.strip()
+    # Filter unrelated queries
+    if not is_architecture_related(query_text):
+        return {
+            "response": (
+                "❌ This assistant is focused on **Software Architecture Design**. "
+                "Please ask questions related to system architecture, design patterns, or related decisions."
+            ),
+            "images": [],
+            "sources": [],
+            "filtered": True
+        }
     # Prepare the DB
     embedding_function = get_embedding_function()
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
@@ -138,18 +120,13 @@ def query_structured(
     ) if conversation_history else "No previous conversation"
     
     prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt_str = prompt_template.format(
+    prompt_str = str(prompt_template.format(
         context=context_text,
         history=history_text,
-        system_type=system_type,
-        functional_requirements=functional_requirements,
-        non_functional_requirements=non_functional_requirements,
-        architecture_preference=architecture_preference,
-        project_description=project_description
-    )
-
-    system_instruction = "Respect the user's architecture preference unless strong reasons justify a different recommendation."
-    full_prompt = system_instruction + "\n\n" + prompt_str
+        question=query_text,
+        fullquery = fullquery
+    ))
+    
     # Configure the remote Ollama instance
     model = Ollama(
         model="llama3.2:latest",
@@ -160,22 +137,14 @@ def query_structured(
     )
     
     try:
-        response_text = model.invoke(full_prompt)
+        response_text = model.invoke(prompt_str)
     except Exception as e:
         return {
             "response": f"Error connecting to the AI model: {str(e)}",
             "images": [],
             "sources": []
         }
-     # Optionally extract a generated architecture suggestion if needed
-    generated_architecture_preference = None
-    if original_preference_unspecified:
-        # Try to extract from the response (simple heuristic-based)
-        match = re.search(r'(recommend(?:ed)?|suggest(?:ed)?|propose(?:d)?).{0,20}?(microservices|monolithic|layered|event[-\s]?driven|service[-\s]?oriented|client[-\s]?server|n[-\s]?tier|hexagonal)', response_text, re.IGNORECASE)
-        if match:
-            generated_architecture_preference = match.group(2).lower().replace('-', ' ').title()
-            print(generated_architecture_preference)
-    
+
     # Process sources from unique results
     formatted_sources = []
     for i, (doc, score) in enumerate(results, 1):
@@ -191,13 +160,8 @@ def query_structured(
     return {
         "response": response_text,
         "images": matched_images,
-        "sources": formatted_sources,
-        "generated_architecture_preference": generated_architecture_preference ,
-        "original_preference_unspecified": original_preference_unspecified
+        "sources": formatted_sources
     }
-
-
-
 
 
 def main():
@@ -205,7 +169,7 @@ def main():
     parser.add_argument("query_text", type=str, help="The query text.")
     args = parser.parse_args()
     query_text = args.query_text
-    result = query_structured(query_text)
+    result = query_rag(query_text)
     print(result)
 
 if __name__ == "__main__":

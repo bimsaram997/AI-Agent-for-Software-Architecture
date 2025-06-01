@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from query_data import query_rag
+from query_data import query_structured
+from chat_query_rag import query_rag
 from typing import Dict, List
 import uuid
 from ADR_query_rag import generate_architecture_report
 import os
 from fastapi.staticfiles import StaticFiles
 from typing import Optional
+import uuid
+
 app = FastAPI()
 pdf_dir = os.path.abspath("data")
 print("✅ Serving PDF directory from:", pdf_dir)
@@ -42,40 +45,57 @@ class StructuredQuery(BaseModel):
 class OpenEndedQuery(BaseModel):
     query: str
     conversation_id: str = None
+    system_type: str
+    functional_requirements: list
+    non_functional_requirements:list
+    architecture_preference: str
+    project_description:Optional[str] = None
 
 class ADRQuery(BaseModel):
     system_type: str
     functional_requirements: list
     non_functional_requirements:list
     architecture_preference: str
-    conversation_id: str = None
     project_description: Optional[str] = None
+    conversation_id: str = None
 
+def generate_adr_id() -> str:
+    return str(uuid.uuid4())
 # Route: structured initial query
 @app.post("/structured-query")
 def handle_structured_query(data: StructuredQuery):
     full_query = f"""System Type: {data.system_type}
 Functional Requirements: {', '.join(data.functional_requirements)}
 Non-Functional Requirements: {', '.join(data.non_functional_requirements)}
-Preferred Architecture: {data.architecture_preference},
+Preferred Architecture: {data.architecture_preference}
 Project Description: {data.project_description}
-
-What is the best approach?"""
+"""
 
     conv_id = str(uuid.uuid4())
     conversation_db[conv_id] = [{"role": "user", "content": full_query}]
 
-    result = query_rag(full_query, conversation_history=[])
+    result = query_structured(
+        full_query,
+        system_type=data.system_type,
+        functional_requirements=", ".join(data.functional_requirements),
+        non_functional_requirements=", ".join(data.non_functional_requirements),
+        architecture_preference=data.architecture_preference, 
+        project_description=data.project_description,
+        conversation_history=[])
     
     # Support both string and dict returns
     if isinstance(result, str):
         response_text = result
         images = []
         sources = []
+        generated_architecture_preference = None
+        original_preference_unspecified = False
     else:
         response_text = result.get("response", "")
         images = result.get("images", [])
         sources = result.get("sources", [])
+        generated_architecture_preference= result.get("generated_architecture_preference", "")
+        original_preference_unspecified =  result.get("original_preference_unspecified")
 
     conversation_db[conv_id].append({"role": "assistant", "content": response_text})
 
@@ -83,12 +103,20 @@ What is the best approach?"""
         "response": response_text,
         "images": images,
         "sources": sources,
-        "conversation_id": conv_id
+        "conversation_id": conv_id,
+        "generated_architecture_preference": generated_architecture_preference,
+        "original_preference_unspecified": original_preference_unspecified
     }
 
 # Route: follow-up chat queries
 @app.post("/query")
 def handle_open_ended_query(data: OpenEndedQuery):
+    full_query = f"""System Type: {data.system_type}
+    Functional Requirements: {', '.join(data.functional_requirements)}
+    Non-Functional Requirements: {', '.join(data.non_functional_requirements)}
+    Preferred Architecture: {data.architecture_preference}
+    Project Description: {data.project_description}
+    """
     conversation_history = []
     if data.conversation_id and data.conversation_id in conversation_db:
         conversation_history = conversation_db[data.conversation_id]
@@ -97,7 +125,9 @@ def handle_open_ended_query(data: OpenEndedQuery):
     conversation_history.append({"role": "user", "content": data.query})
 
     # Run your RAG + query classifier here
-    result = query_rag(data.query, conversation_history=conversation_history)
+    result = query_rag(full_query,
+                       data.query,
+                       conversation_history=conversation_history, )
 
     # If result is just string, make consistent dict
     if isinstance(result, str):
@@ -137,7 +167,9 @@ def generate_adr(data: ADRQuery):
     conversation_history = []
     if data.conversation_id and data.conversation_id in conversation_db:
         conversation_history = conversation_db[data.conversation_id]
-
+    print(data)
+    
+    adr_id = data.adr_id if hasattr(data, 'adr_id') and data.adr_id else generate_adr_id()
     user_input_summary = (
         f"System Type: {data.system_type}\n"
         f"Functional Requirements: {', '.join(data.functional_requirements)}\n"
@@ -152,18 +184,16 @@ def generate_adr(data: ADRQuery):
         system_type=data.system_type,
         functional_requirements=", ".join(data.functional_requirements),
         non_functional_requirements=", ".join(data.non_functional_requirements),
-        architecture_preference=data.architecture_preference
+        architecture_preference=data.architecture_preference,
+        adr_id=adr_id,
+        conversation_history=conversation_history
     )
 
     adr_markdown = result.get("report", "No ADR content generated.")
     images = result.get("images", [])
     sources = result.get("sources", [])
 
-    # Log assistant response
-    conversation_history.append({"role": "assistant", "content": adr_markdown})
 
-    # Save updated history
-    conversation_db[data.conversation_id] = conversation_history
 
     return {
         "conversation_id": data.conversation_id,

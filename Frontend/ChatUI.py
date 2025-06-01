@@ -73,9 +73,9 @@ if st.session_state.stage == "questions":
         )
     with col2:
         architecture_preference = st.radio(
-            "Do you prefer a specific architecture pattern?",
-            ["Microservices", "Monolithic", "Event-Driven", "Not sure"], horizontal=True
-        )
+        "Do you prefer a specific architecture pattern?",
+        ["Microservices", "Monolithic", "Event-Driven", "Not sure"], horizontal=True
+    )
 
     # Row 2
     with col1:
@@ -125,8 +125,8 @@ if st.session_state.stage == "questions":
                     st.session_state.system_type = system_type
                     st.session_state.functional_requirements = all_functional_requirements
                     st.session_state.non_functional_requirements = all_non_functional_requirements
-                    st.session_state.architecture_preference = architecture_preference,
-                    
+                    st.session_state.architecture_preference = architecture_preference
+                    st.session_state. project_description = project_description
                     response = requests.post(
                         BACKEND_URL_STRUCTURED,
                         json={
@@ -141,11 +141,16 @@ if st.session_state.stage == "questions":
                         result = response.json()
                         st.session_state.recommendations = result.get("response", "No recommendation received.")
                         st.session_state.conversation_id = result.get("conversation_id")
+                        print(result)
+                        if result.get("original_preference_unspecified"):
+                            print(result.get("generated_architecture_preference", "No preference"))
+                            st.session_state.architecture_preference = result.get("generated_architecture_preference", "No preference")  + " architecture"
                         ai_response = {
                             "text": "🤖 " + st.session_state.recommendations,
                             "images": result.get("images", []),
                             "sources": result.get("sources", [])
                         }
+                        
                         st.session_state.chat_history.append(("🧑‍💻 My system details", ai_response))
                         st.session_state.stage = "chat"
                         st.rerun()
@@ -175,6 +180,16 @@ if st.session_state.stage == "chat":
                 st.markdown(source, unsafe_allow_html=True)
 
         st.markdown("---")
+    if "temp_query" in st.session_state and "temp_response" in st.session_state:
+        st.markdown(f"**🧑‍💻 {st.session_state.temp_query}**")
+        st.markdown(st.session_state.temp_response.get("text", ""))
+        if st.session_state.temp_response.get("images"):
+            for img_path in st.session_state.temp_response["images"]:
+                try:
+                    st.image(Image.open(img_path).resize((500, 400)))
+                except Exception as e:
+                    st.warning(f"Failed to load image: {img_path}\nError: {e}")
+        st.markdown("---")
 
     user_query = st.text_input("Ask me anything about your architecture:", key="chat_input")
 
@@ -184,24 +199,30 @@ if st.session_state.stage == "chat":
         if st.button("Ask AI") and user_query.strip():
             with st.spinner("Thinking..."):
                 try:
-                    response = requests.post(
-                        BACKEND_URL_OPEN_ENDED,
-                        json={
-                            "query": user_query,
-                            "conversation_id": st.session_state.conversation_id
-                        }
-                    )
+                    response = requests.post(BACKEND_URL_OPEN_ENDED, json={
+                        "query": user_query,
+                        "conversation_id": st.session_state.get("conversation_id"),
+                         "system_type": st.session_state.system_type,
+                        "functional_requirements":  st.session_state.functional_requirements,
+                        "non_functional_requirements":  st.session_state.non_functional_requirements,
+                        "architecture_preference": st.session_state.architecture_preference,
+                        "project_description": st.session_state. project_description
+                    })
                     if response.status_code == 200:
                         result = response.json()
-                        images = result.get("images", [])
                         ai_response = {
                             "text": "🤖 " + result.get("response", "No response received."),
-                            "images": images,
+                            "images": result.get("images", []),
                             "sources": result.get("sources", [])
                         }
-                        st.session_state.chat_history.append(("🧑‍💻 " + user_query, ai_response))
-                        st.session_state.generated_images = images
-                        st.session_state.clear_input = True
+                        if not result.get("filtered", False):
+                            st.session_state.chat_history.append(("🧑‍💻 " + user_query, ai_response))
+                            st.session_state.clear_input = True
+                            st.session_state.pop("temp_query", None)
+                            st.session_state.pop("temp_response", None)
+                        else:
+                            st.session_state.temp_query = user_query
+                            st.session_state.temp_response = ai_response
                         st.rerun()
                     else:
                         st.error(f"❌ Error {response.status_code}: {response.text}")
@@ -221,17 +242,24 @@ if st.session_state.stage == "chat":
         if st.button("📝 Generate ADR"):
             with st.spinner("Generating ADR..."):
                 try:
+                    arch_pref = st.session_state.get("architecture_preference", "")
+                    # If it's a list, join it as a comma-separated string with no trailing comma
+                    if isinstance(arch_pref, list):
+                        arch_pref = ", ".join(map(str, arch_pref))
+                        print(arch_pref)
                     response = requests.post(
                         BACKEND_URL_ADR,
                         json={
                             "system_type": st.session_state.get("system_type", ""),
                             "functional_requirements": st.session_state.get("functional_requirements", ""),
                             "non_functional_requirements": st.session_state.get("non_functional_requirements", ""),
-                            "architecture_preference": st.session_state.get("architecture_preference", ""),
-                            "conversation_id": st.session_state.get("conversation_id", ""),
+                            "architecture_preference": arch_pref,
                             "project_description": st.session_state.get("project_description", ""),
+                            "conversation_id": st.session_state.get("conversation_id")
                         }
+                       
                     )
+                    print( st.session_state.get("architecture_preference"))
                     if response.status_code == 200:
                         result = response.json()
                         adr_text = result.get("adr", "")
