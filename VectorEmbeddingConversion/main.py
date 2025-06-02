@@ -61,6 +61,7 @@ class ADRQuery(BaseModel):
 
 def generate_adr_id() -> str:
     return str(uuid.uuid4())
+
 # Route: structured initial query
 @app.post("/structured-query")
 def handle_structured_query(data: StructuredQuery):
