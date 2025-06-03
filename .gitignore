@@ -1,6 +1,7 @@
 # .gitignore for Vector Embedding Conversion project
 Vector Embedding Conversion/data_images/
 Vector Embedding Conversion/data/
+VectorEmbeddingConversion/.env
 # Ignore directories
 data/
 __pycache__/
@@ -18,6 +19,7 @@ chroma/
 # Environment variables
 .env
 .env.local
+**/.env
 
 # IDE specific files
 .vscode/

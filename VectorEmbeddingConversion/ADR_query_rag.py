@@ -1,12 +1,13 @@
+import os
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
 from langchain_community.llms.ollama import Ollama
 from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import Dict, List, Optional
-import re
-from datetime import date
-
+from utils import get_current_date
+from dotenv import load_dotenv
+load_dotenv()
 
 CHROMA_PATH = "chroma"
 
@@ -45,18 +46,6 @@ Use markdown formatting. You must fill in the **Decision**, **Consequences**, an
 """
 
 
-def get_current_date() -> str:
-    return date.today().isoformat()  # Returns '2025-06-02'
-
-def extract_all_plantuml(markdown_text: str) -> List[str]:
-    """
-    Extract all PlantUML code blocks from the markdown text.
-    Returns a list of PlantUML source code strings.
-    """
-    pattern = r"```plantuml\s*(.*?)```"
-    matches = re.findall(pattern, markdown_text, re.DOTALL)
-    # Strip whitespace from each matched code block
-    return [match.strip() for match in matches]
 
 def generate_architecture_report(
     system_type: str,
@@ -75,9 +64,8 @@ def generate_architecture_report(
 
     # Optional image results
     architecture_preference = architecture_preference + " Architecture"
-    print(architecture_preference)
     matched_images = search_images(architecture_preference, similarity_threshold=0.85, top_k=2)
-    print(matched_images)
+
     # Prepare conversation context (if provided)
     formatted_conversation = ""
     if conversation_history:
@@ -111,7 +99,7 @@ def generate_architecture_report(
     # Initialize the LLM
     model = Ollama(
         model="llama3.2:latest",
-        base_url="http://86.50.169.115:11434",
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0.6,
         top_p=0.9,
         timeout=60

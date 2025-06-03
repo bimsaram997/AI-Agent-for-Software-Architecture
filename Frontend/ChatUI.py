@@ -1,45 +1,19 @@
 import streamlit as st
 import requests
-from fpdf import FPDF
-import re
 from io import BytesIO
 from PIL import Image
 from utils import generate_adr_pdf, generate_chat_pdf
-from streamlit_custom_notification_box import custom_notification_box
 from config import FUNCTIONAL_REQUIREMENTS, NON_FUNCTIONAL_REQUIREMENTS
 import streamlit_tags as st_tags
+
 # Backend endpoints
 BACKEND_URL_STRUCTURED = "http://127.0.0.1:8000/structured-query"
 BACKEND_URL_OPEN_ENDED = "http://127.0.0.1:8000/query"
 BACKEND_URL_ADR = "http://127.0.0.1:8000/generate-adr"
-import textwrap
 
-def wrap_paragraph(paragraph: str, width=90) -> str:
-    """
-    Wraps a single paragraph text to lines of max width characters.
-    Returns a string with '\n' inserted.
-    """
-    # textwrap.fill wraps text respecting spaces
-    return textwrap.fill(paragraph, width=width)
-
-def preprocess_adr_text(raw_text: str, max_line_length=90) -> str:
-    """
-    Splits raw ADR text into paragraphs (by double newlines),
-    wraps each paragraph by max_line_length,
-    returns the recombined text.
-    """
-    paragraphs = raw_text.split('\n\n')
-    wrapped_paragraphs = [wrap_paragraph(p, width=max_line_length) for p in paragraphs]
-    return '\n\n'.join(wrapped_paragraphs)
 # Page config
 st.set_page_config(page_title="AI Software Architect", layout="wide")
 st.title("🧠 AI-Powered Software Architecture Assistant")
-
-styles = {'material-icons':{'color': 'red'},
-          'text-icon-link-close-container': {'box-shadow': '#3896de 0px 4px'},
-          'notification-text': {'':''},
-          'close-button':{'':''},
-          'link':{'':''}}
 
 # Session state initialization
 if "stage" not in st.session_state:
@@ -76,7 +50,6 @@ if st.session_state.clear_input:
     st.session_state.clear_input = False
 
 
-# Step 1: Questions
 # Step 1: Questions
 if st.session_state.stage == "questions":
     st.subheader("Step 1: Tell me about your project")
@@ -124,7 +97,7 @@ if st.session_state.stage == "questions":
     all_functional_requirements = list(dict.fromkeys(func_reqs + st.session_state.custom_func_reqs))
     all_non_functional_requirements = list(dict.fromkeys(non_func_reqs + st.session_state.custom_non_func_reqs))
     
-      # Project description - full width
+    # Project description - full width
     project_description = st.text_area(
         "Describe your project in a few sentences:",
         value=st.session_state.get("project_description", ""),

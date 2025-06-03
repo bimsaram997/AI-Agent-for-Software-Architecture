@@ -6,6 +6,8 @@ from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import List, Dict, Optional, Tuple
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 PDF_BASE_URL = "http://127.0.0.1:8000/files/"
 CHROMA_PATH = "chroma"
@@ -130,7 +132,7 @@ def query_rag(fullquery: str, query_text: str, conversation_history: Optional[Li
     # Configure the remote Ollama instance
     model = Ollama(
         model="llama3.2:latest",
-        base_url="http://86.50.169.115:11434",  
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0.7,
         top_p=0.9,
         timeout=60  
@@ -170,7 +172,6 @@ def main():
     args = parser.parse_args()
     query_text = args.query_text
     result = query_rag(query_text)
-    print(result)
 
 if __name__ == "__main__":
     main()

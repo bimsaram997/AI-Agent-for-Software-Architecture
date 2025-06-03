@@ -7,6 +7,9 @@ from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import List, Dict, Optional, Tuple
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 
 PDF_BASE_URL = "http://127.0.0.1:8000/files/"
 CHROMA_PATH = "chroma"
@@ -112,7 +115,7 @@ def query_structured(
         original_preference_unspecified = True
     else:
     # Use exactly what user provided, e.g., "microservices", "layered"
-        architecture_preference = architecture_preference.strip()
+        architecture_preference = architecture_preference.strip() + " Architecture"
     # Prepare the DB
     embedding_function = get_embedding_function()
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
@@ -153,7 +156,7 @@ def query_structured(
     # Configure the remote Ollama instance
     model = Ollama(
         model="llama3.2:latest",
-        base_url="http://86.50.169.115:11434",  
+        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         temperature=0.7,
         top_p=0.9,
         timeout=60  
@@ -173,7 +176,7 @@ def query_structured(
         # Try to extract from the response (simple heuristic-based)
         match = re.search(r'(recommend(?:ed)?|suggest(?:ed)?|propose(?:d)?).{0,20}?(microservices|monolithic|layered|event[-\s]?driven|service[-\s]?oriented|client[-\s]?server|n[-\s]?tier|hexagonal)', response_text, re.IGNORECASE)
         if match:
-            generated_architecture_preference = match.group(2).lower().replace('-', ' ').title() 
+            generated_architecture_preference = match.group(2).lower().replace('-', ' ').title() + " Architecture"
     
     # Process sources from unique results
     formatted_sources = []
@@ -185,7 +188,7 @@ def query_structured(
         formatted_sources.append(f'Source {i}: <a href="{pdf_url}" target="_blank">{filename}</a>')
 
     # Search for images
-    matched_images = search_images(query_text, similarity_threshold=0.89, top_k=2)
+    matched_images = search_images(architecture_preference, similarity_threshold=0.89, top_k=2)
     
     return {
         "response": response_text,
