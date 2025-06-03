@@ -4,7 +4,7 @@ from fpdf import FPDF
 import re
 from io import BytesIO
 from PIL import Image
-from utils import generate_adr_pdf
+from utils import generate_adr_pdf, generate_chat_pdf
 from streamlit_custom_notification_box import custom_notification_box
 from config import FUNCTIONAL_REQUIREMENTS, NON_FUNCTIONAL_REQUIREMENTS
 import streamlit_tags as st_tags
@@ -211,7 +211,7 @@ if st.session_state.stage == "chat":
 
     user_query = st.text_input("Ask me anything about your architecture:", key="chat_input")
 
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
 
     with col1:
         if st.button("Ask AI") and user_query.strip():
@@ -246,8 +246,23 @@ if st.session_state.stage == "chat":
                         st.error(f"❌ Error {response.status_code}: {response.text}")
                 except requests.exceptions.RequestException as e:
                     st.error(f"⚠️ Connection error: {e}")
-
     with col2:
+        with st.container():
+            if st.button("🗂️ Export Chat as PDF"):
+                if st.session_state.chat_history:
+                    chat_pdf = generate_chat_pdf(st.session_state.chat_history)
+                    chat_bytes = BytesIO()
+                    chat_pdf.output(chat_bytes)
+                    chat_bytes.seek(0)
+                    st.download_button(
+                        label="📥 Download Chat History PDF",
+                        data=chat_bytes,
+                        file_name=f"Chat_History_{st.session_state.conversation_id or 'session'}.pdf",
+                        mime="application/pdf"
+                    )
+                else:
+                    st.warning("Chat history is empty.")
+    with col3:
         if st.button("Restart Conversation"):
             keys_to_reset = list(st.session_state.keys())
             for key in keys_to_reset:
@@ -256,7 +271,7 @@ if st.session_state.stage == "chat":
             st.session_state.stage = "questions"
             st.rerun()
 
-    with col3:
+    with col4:
         if st.button("📝 Generate ADR"):
             with st.spinner("Generating ADR..."):
                 try:
