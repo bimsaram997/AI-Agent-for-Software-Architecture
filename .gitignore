@@ -1,0 +1,39 @@
+# .gitignore for Vector Embedding Conversion project
+Vector Embedding Conversion/data_images/
+Vector Embedding Conversion/data/
+VectorEmbeddingConversion/.env
+# Ignore directories
+data/
+__pycache__/
+chroma/
+
+# SQLite database files
+*.sqlite3
+*.db
+*.sqlite
+
+# Python cache and compiled files
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.local
+**/.env
+
+# IDE specific files
+.vscode/
+.idea/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.pyd
+*.dll
+
+# Logs and outputs
+*.log
+*.out
