@@ -67,7 +67,6 @@ def generate_architecture_report(
     deciders: str = "Architecture Team",
     conversation_history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, str]:
-    print(adr_id + " " + deciders)
     # Initialize vector database for related content
     embedding_function = get_embedding_function()
     db = Chroma(persist_directory=CHROMA_PATH, embedding_function=embedding_function)
@@ -75,8 +74,10 @@ def generate_architecture_report(
     results = db.similarity_search_with_score(search_query, k=5)
 
     # Optional image results
+    architecture_preference = architecture_preference + " Architecture"
+    print(architecture_preference)
     matched_images = search_images(architecture_preference, similarity_threshold=0.85, top_k=2)
-
+    print(matched_images)
     # Prepare conversation context (if provided)
     formatted_conversation = ""
     if conversation_history:
@@ -132,8 +133,6 @@ def generate_architecture_report(
         formatted_sources.append(
             f"Source {i}: {meta.get('source', meta.get('id', 'Unknown'))}"
         )
-
-    print(markdown_report)
     return {
         "report": markdown_report,
         "images": matched_images,

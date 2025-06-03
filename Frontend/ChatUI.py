@@ -12,7 +12,25 @@ import streamlit_tags as st_tags
 BACKEND_URL_STRUCTURED = "http://127.0.0.1:8000/structured-query"
 BACKEND_URL_OPEN_ENDED = "http://127.0.0.1:8000/query"
 BACKEND_URL_ADR = "http://127.0.0.1:8000/generate-adr"
+import textwrap
 
+def wrap_paragraph(paragraph: str, width=90) -> str:
+    """
+    Wraps a single paragraph text to lines of max width characters.
+    Returns a string with '\n' inserted.
+    """
+    # textwrap.fill wraps text respecting spaces
+    return textwrap.fill(paragraph, width=width)
+
+def preprocess_adr_text(raw_text: str, max_line_length=90) -> str:
+    """
+    Splits raw ADR text into paragraphs (by double newlines),
+    wraps each paragraph by max_line_length,
+    returns the recombined text.
+    """
+    paragraphs = raw_text.split('\n\n')
+    wrapped_paragraphs = [wrap_paragraph(p, width=max_line_length) for p in paragraphs]
+    return '\n\n'.join(wrapped_paragraphs)
 # Page config
 st.set_page_config(page_title="AI Software Architect", layout="wide")
 st.title("🧠 AI-Powered Software Architecture Assistant")

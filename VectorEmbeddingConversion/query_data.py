@@ -173,8 +173,7 @@ def query_structured(
         # Try to extract from the response (simple heuristic-based)
         match = re.search(r'(recommend(?:ed)?|suggest(?:ed)?|propose(?:d)?).{0,20}?(microservices|monolithic|layered|event[-\s]?driven|service[-\s]?oriented|client[-\s]?server|n[-\s]?tier|hexagonal)', response_text, re.IGNORECASE)
         if match:
-            generated_architecture_preference = match.group(2).lower().replace('-', ' ').title()
-            print(generated_architecture_preference)
+            generated_architecture_preference = match.group(2).lower().replace('-', ' ').title() 
     
     # Process sources from unique results
     formatted_sources = []
@@ -206,7 +205,6 @@ def main():
     args = parser.parse_args()
     query_text = args.query_text
     result = query_structured(query_text)
-    print(result)
 
 if __name__ == "__main__":
     main()
