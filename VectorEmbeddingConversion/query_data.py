@@ -10,8 +10,8 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-
-PDF_BASE_URL = "http://localhost:8080/files/"
+ngrok_url = "https://7261-88-193-141-208.ngrok-free.app"
+PDF_BASE_URL = f"{ngrok_url}files/"
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
