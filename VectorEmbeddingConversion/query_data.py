@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-PDF_BASE_URL = "http://127.0.0.1:8000/files/"
+PDF_BASE_URL = "http://localhost:8080/files/"
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
