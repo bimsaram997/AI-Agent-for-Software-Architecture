@@ -10,8 +10,9 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-ngrok_url = "https://7261-88-193-141-208.ngrok-free.app"
-PDF_BASE_URL = f"{ngrok_url}files/"
+
+PDF_BASE_URL = "https://9123-88-193-141-208.ngrok-free.app/pdf/"
+
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
@@ -54,6 +55,7 @@ Your Response:
 - Recommend the most appropriate architecture style (e.g., microservices, layered, event-driven, hexagonal, monolithic, etc.).
 - Justify your recommendation based on system goals and trade-offs.
 - Mention alternative architectures and why they are less suitable, if relevant.
+- Include Design patterns.
 - Include real-world examples or known use cases if possible.
 - Include step by step process to build the system.
 - Suggest suitable technologies(e.g., React, Docker, .Net Core)

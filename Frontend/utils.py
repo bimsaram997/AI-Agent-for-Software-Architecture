@@ -138,6 +138,8 @@ def generate_adr_pdf(adr_text: str, images: list) -> FPDF:
             continue
 
         safe_multicell(pdf, clean, available_width)
+    if images:
+        safe_multicell(pdf, "--These are example images for the suggested architecture--", available_width)
     for img_obj in images:
         try:
             if isinstance(img_obj, str):
@@ -224,6 +226,8 @@ def generate_chat_pdf(chat_history) -> FPDF:
 
             # Add images if any
             images = ai_msg.get("images", [])
+            if images:
+                safe_multicell(pdf, "--These are example images for the suggested architecture--", available_width)
             for img_path in images:
                 try:
                     img = Image.open(img_path)

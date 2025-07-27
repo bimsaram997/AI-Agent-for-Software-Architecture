@@ -8,8 +8,8 @@ from typing import List, Dict, Optional, Tuple
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
-PDF_BASE_URL = "http://127.0.0.1:8000/files/"
+PDF_BASE_URL = "https://9123-88-193-141-208.ngrok-free.app/pdf/"
+#PDF_BASE_URL = "http://127.0.0.1:8000/files/"
 CHROMA_PATH = "chroma"
 PROMPT_TEMPLATE = """
 You are an AI Software Architecture Assistant helping with application design, architecture, and related best practices.

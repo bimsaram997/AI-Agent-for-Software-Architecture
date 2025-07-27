@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from query_data import query_structured
 from chat_query_rag import query_rag
@@ -20,7 +21,20 @@ if not os.path.exists(pdf_dir):
     raise RuntimeError(f"❌ Directory not found: {pdf_dir}")
 
 # Serve static PDF files at /files/*
-app.mount("/files", StaticFiles(directory=pdf_dir), name="files")
+from pathlib import Path
+
+
+@app.get("/pdf/{filename}")
+def serve_pdf(filename: str):
+    file_path = Path(pdf_dir) / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'}
+    )
+
 conversation_db: Dict[str, List[Dict]] = {}
 
 

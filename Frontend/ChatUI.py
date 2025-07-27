@@ -132,7 +132,6 @@ if st.session_state.stage == "questions":
                         result = response.json()
                         st.session_state.recommendations = result.get("response", "No recommendation received.")
                         st.session_state.conversation_id = result.get("conversation_id")
-                        print(result)
                         if result.get("original_preference_unspecified"):
                             print(result.get("generated_architecture_preference", "No preference"))
                             st.session_state.architecture_preference = result.get("generated_architecture_preference", "No preference")  + " architecture"
@@ -141,7 +140,7 @@ if st.session_state.stage == "questions":
                             "images": result.get("images", []),
                             "sources": result.get("sources", [])
                         }
-                        
+                        print( result.get("sources", []))
                         st.session_state.chat_history.append(("🧑‍💻 My system details", ai_response))
                         st.session_state.stage = "chat"
                         st.rerun()
@@ -158,6 +157,7 @@ if st.session_state.stage == "chat":
         st.markdown(f"**{user_msg}**")
         st.markdown(ai_msg.get("text", ""))
         if ai_msg.get("images"):
+            st.markdown("*These are example images for the suggested architecture:*")
             for img_path in ai_msg["images"]:
                 try:
                     img = Image.open(img_path)
