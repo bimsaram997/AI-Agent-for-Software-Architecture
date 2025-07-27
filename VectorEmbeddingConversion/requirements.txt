@@ -1,18 +1,18 @@
 # === Web framework ===
 fastapi==0.111.0
-uvicorn==0.30.0  # for running FastAPI apps
+uvicorn==0.30.0
 
 # === CORS Middleware ===
-starlette==0.37.2  # Required by FastAPI (includes CORSMiddleware)
+starlette==0.37.2
 
 # === Data validation ===
-pydantic==1.10.15  # Or >=2.0, but needs code adjustments if changed
+pydantic==1.10.15
 
 # === Typing support ===
 typing-extensions>=4.5.0
 
 # === File operations & static files ===
-python-multipart==0.0.9  # In case file upload support is needed
+python-multipart==0.0.9
 
 # === LangChain, Ollama, ChromaDB, etc. ===
 langchain==0.1.16
@@ -25,23 +25,23 @@ sentence-transformers==2.6.1
 scikit-learn>=1.3.0
 numpy>=1.24.0
 
-# === Image processing (if images returned/generated) ===
-Pillow>=10.0.0
+# === Image processing ===
+Pillow==10.0.0
 
 # === Dotenv for environment variable loading ===
 python-dotenv==1.0.1
 
-# === Date handling (if used in ADR) ===
+# === Date handling ===
 python-dateutil>=2.8.2
 
-# === UUID generation, OS access — part of stdlib ===
-# No need to include `uuid` or `os` in requirements.txt
-
-# === If you want everything pip-frozen ===
-# pip freeze > requirements.txt
-
-streamlit==1.24.1
-requests==2.31.0
-Pillow==10.0.0
-streamlit-tags==0.7.0
+# === PDF generation, Tags widget ===
 fpdf2==2.8.3
+streamlit==1.24.1
+streamlit-tags==0.7.0
+
+# === HTTP requests ===
+requests==2.31.0
+
+# === Optional: If cefpython3 is needed ===
+# cefpython3==66.0
+python-3.10.14
