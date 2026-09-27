@@ -6,6 +6,7 @@ from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import List, Dict, Optional, Tuple
 from langchain_groq import ChatGroq
+
 import os
 from dotenv import load_dotenv
 load_dotenv()
