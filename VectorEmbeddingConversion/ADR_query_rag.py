@@ -7,6 +7,7 @@ from display_image import search_images
 from typing import Dict, List, Optional
 from utils import get_current_date
 from dotenv import load_dotenv
+from langchain_groq import ChatGroq
 load_dotenv()
 
 CHROMA_PATH = "chroma"
@@ -97,11 +98,21 @@ def generate_architecture_report(
 )
 
     # Initialize the LLM
-    model = Ollama(
-        model="llama3.2:latest",
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        temperature=0.6,
-        top_p=0.9,
+    model = ChatGroq(
+        model_name="llama-3.2-3b-preview", # or "llama-3.1-8b-instant"
+        groq_api_key=os.getenv("GROQ_API_KEY"),
+        temperature=0.7,
+        timeout=60
+    )
+# Replace Ollama import with ChatGroq
+
+
+# Inside query_rag():
+    # Remove or comment out Ollama(...) and use ChatGroq:
+    model = ChatGroq(
+        model_name="llama-3.2-3b-preview", # or "llama-3.1-8b-instant"
+        groq_api_key=os.getenv("GROQ_API_KEY"),
+        temperature=0.7,
         timeout=60
     )
 
