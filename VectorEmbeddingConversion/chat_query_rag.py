@@ -5,6 +5,7 @@ from langchain_community.llms.ollama import Ollama
 from get_embedding_function import get_embedding_function
 from display_image import search_images
 from typing import List, Dict, Optional, Tuple
+from langchain_groq import ChatGroq
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -130,13 +131,12 @@ def query_rag(fullquery: str, query_text: str, conversation_history: Optional[Li
     ))
     
     # Configure the remote Ollama instance
-    model = Ollama(
-        model="llama3.2:latest",
-        base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-        temperature=0.7,
-        top_p=0.9,
-        timeout=60  
-    )
+    model = ChatGroq(
+            model_name="llama-3.2-3b-preview", # or "llama-3.1-8b-instant"
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            temperature=0.7,
+            timeout=60
+        )
     
     try:
         response_text = model.invoke(prompt_str)
