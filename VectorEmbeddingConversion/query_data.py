@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-PDF_BASE_URL = "https://219b9c382ceb.ngrok-free.app/pdf/"
-
+#PDF_BASE_URL = "https://6ccea3a94dd0.ngrok-free.app/pdf/"
+PDF_BASE_URL = "http://127.0.0.1:8000/pdf/"
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
