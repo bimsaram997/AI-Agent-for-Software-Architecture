@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from utils import get_current_date
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+
 load_dotenv()
 
 CHROMA_PATH = "chroma"

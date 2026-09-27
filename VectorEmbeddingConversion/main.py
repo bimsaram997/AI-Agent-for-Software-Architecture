@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from query_data import query_structured
 from chat_query_rag import query_rag
 from typing import Dict, List
+from langchain.prompts import ChatPromptTemplate
 import uuid
 from ADR_query_rag import generate_architecture_report
 import os
